@@ -24,7 +24,7 @@ def chunks_to_gossip(pdf_bytes: bytes):
 
     # Load model once per container (saves credits)
     if "model" not in globals():
-        model_name = "mistralai/Mistral-7B-Instruct-v0.1"
+        model_name = "Qwen/Qwen2.5-7B-Instruct"
         tokenizer = AutoTokenizer.from_pretrained(model_name)
         model = AutoModelForCausalLM.from_pretrained(
             model_name,
@@ -41,34 +41,60 @@ def chunks_to_gossip(pdf_bytes: bytes):
         # edit prompt
 
         if i == 0:
-            prompt = (
-                f"[INST] You are a gossip blogger explaining academic papers "
-                f"to someone with zero technical background. Rewrite the following "
-                f"text as if you're texting your best friend. Rules: "
-                f"1) Replace ALL technical jargon with simple everyday analogies "
-                f"(e.g. 'Bayesian inference' becomes 'basically a smart guessing game'). "
-                f"2) Use modern slang, dramatic reactions, and short punchy sentences. "
-                f"3) Keep the core ideas but explain them like you're talking to a 5th grader. "
-                f"4) Never use the original technical terms without explaining them simply first.\n\n"
-                f"{chunk} [/INST]"
-            )
+            messages = [
+                {"role": "system", "content": (
+                    "You are a gossip blogger explaining academic papers "
+                    "to someone with zero technical background. Rules:\n"
+                    "1) Rewrite ALL technical jargon with everyday analogies that a 5th grader would understand.\n"
+                    "2) Keep core ideas but explain using modern slang, dramatic reactions, and short punchy sentences.\n"
+                    "3) Never use the original technical terms without explaining them simply first.\n"
+                    "4) NEVER use swear words or profanity.\n"
+                    "5) Be sensitive to serious or triggering topics (e.g. violence, trauma, tragedy, discrimination). "
+                    "Do NOT use dramatic or gossipy language that devalues or makes light of these heavy subjects. Maintain a respectful tone for sensitive content.\n"
+                    "6) NEVER include a sign-off, outro, or concluding phrase (like 'XOXO', 'Catch you later', etc.). Do not conclude the post, just stop abruptly when the information ends.\n"
+                    "Do NOT get more formal or serious unless the topic requires it. Stay gossipy and fun the rest of the time."
+                )},
+                {"role": "user", "content": f"Rewrite this text as a gossip text to your best friend:\n\n{chunk}"}
+            ]
         else:
-            prompt = (
-                f"[INST] Here is what you just wrote in a gossip blog post:\n\n"
-                f"\"{prev_gossip[-500:]}\"\n\n"
-                f"Continue the blog post for this next section. "
-                f"Keep the SAME gossipy, fun, dramatic tone. "
-                f"Do NOT repeat anything or re-introduce yourself. "
-                f"Just keep going, explain jargon with simple analogies.\n\n"
-                f"{chunk} [/INST]"
-            )
+            messages = [
+                {"role": "system", "content": (
+                    "You are a gossip blogger explaining academic papers. "
+                    "CRITICAL RULES:\n"
+                    "1) Start your response as a direct continuation of the previous paragraph. "
+                    "Do NOT start with a greeting, introduction, or summary of what came before.\n"
+                    "2) Do NOT repeat ANY information already covered.\n"
+                    "3) MATCH THE EXACT SAME ENERGY and tone as the text above — "
+                    "same level of modern slang and dramatic reactions and casual vibes.\n"
+                    "4) Keep the core ideas but explain them like you're talking to a 5th grader.\n"
+                    "5) Never use the original technical terms without explaining them simply first.\n"
+                    "6) NEVER use swear words or profanity.\n"
+                    "7) Be sensitive to serious or triggering topics (e.g. violence, trauma, tragedy, discrimination). "
+                    "Do NOT use dramatic or gossipy language that devalues or makes light of these heavy subjects.\n"
+                    "8) NEVER include a sign-off, outro, or concluding phrase (like 'XOXO', 'Catch you later', etc.). Do not conclude the post, just stop abruptly when the information ends.\n"
+                    "Do NOT get more formal or serious unless the topic requires it. Stay gossipy and fun the rest of the time."
+                )},
+                {"role": "user", "content": (
+                    f"Here is what you just wrote in your gossip blog post:\n\n"
+                    f"\"{prev_gossip[-500:]}\"\n\n"
+                    f"Now continue the blog post for this next section without repeating any information already covered or reintroducing yourself."
+                    f"Just keep going, explaining jargon with simple analogies.\n\n"
+                    f"{chunk}"
+                )}
+            ]
+
+        # Use the model's official chat template
+        prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
         inputs = tokenizer(prompt, return_tensors="pt").to("cuda")
 
         outputs = model.generate(**inputs, max_new_tokens=500, temperature=1.3, do_sample=True)
 
-        result = tokenizer.decode(outputs[0][inputs['input_ids'].shape[1]:], skip_special_tokens=True).strip()
+        # Decode only the generated tokens (everything after the prompt)
+        generated_ids = outputs[0][inputs['input_ids'].shape[1]:]
+        result = tokenizer.decode(generated_ids, skip_special_tokens=True).strip()
         gossips.append(result)
         prev_gossip = result
+
 
     return gossips
 
