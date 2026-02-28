@@ -39,12 +39,22 @@ def chunks_to_gossip(pdf_bytes: bytes):
     for chunk in text_chunks:
         # edit prompt
 
-        prompt = f"Turn this academic/historical text into short, gossipy style:\n\n{chunk}"
+        prompt = (
+            f"[INST] You are a gossip blogger explaining academic papers "
+            f"to someone with zero technical background. Rewrite the following "
+            f"text as if you're texting your best friend. Rules: "
+            f"1) Replace ALL technical jargon with simple everyday analogies "
+            f"(e.g. 'Bayesian inference' becomes 'basically a smart guessing game'). "
+            f"2) Use modern slang, dramatic reactions, and short punchy sentences. "
+            f"3) Keep the core ideas but explain them like you're talking to a 5th grader. "
+            f"4) Never use the original technical terms without explaining them simply first.\n\n"
+            f"{chunk} [/INST]"
+        )
         inputs = tokenizer(prompt, return_tensors="pt").to("cuda")
 
-        outputs = model.generate(**inputs, max_new_tokens=200)
+        outputs = model.generate(**inputs, max_new_tokens=300)
 
-        result = tokenizer.decode(outputs[0], skip_special_tokens=True)
+        result = tokenizer.decode(outputs[0][inputs['input_ids'].shape[1]:], skip_special_tokens=True)
         gossips.append(result)
 
     return gossips
