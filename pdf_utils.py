@@ -23,6 +23,27 @@ def extract_text_from_pdf(file_path: str) -> str:
     return full_text
 
 
+def extract_text_from_bytes(pdf_bytes: bytes) -> str:
+    """
+    Extract raw text from a text-based PDF using raw bytes.
+    Raises error if PDF appears unreadable or scanned.
+    """
+    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+
+    if doc.page_count > 20:
+        raise ValueError("PDF too long. Max 20 pages allowed.")
+
+    full_text = ""
+
+    for page in doc:
+        full_text += page.get_text("text") + "\n"
+
+    if len(full_text.strip()) < 500:
+        raise ValueError("PDF appears to be scanned or unreadable.")
+
+    return full_text
+
+
 def clean_text(text: str) -> str:
     """
     Basic cleaning:
@@ -71,6 +92,20 @@ def process_pdf(file_path: str) -> list[str]:
     Returns cleaned text chunks ready for LLM input.
     """
     raw_text = extract_text_from_pdf(file_path)
+    cleaned_text = clean_text(raw_text)
+    chunks = chunk_text_by_paragraph(cleaned_text)
+
+    if not chunks:
+        raise ValueError("No valid text chunks extracted.")
+
+    return chunks
+
+
+def process_pdf_bytes(pdf_bytes: bytes) -> list[str]:
+    """
+    Process PDF from raw bytes.
+    """
+    raw_text = extract_text_from_bytes(pdf_bytes)
     cleaned_text = clean_text(raw_text)
     chunks = chunk_text_by_paragraph(cleaned_text)
 
