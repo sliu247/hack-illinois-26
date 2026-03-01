@@ -1,2 +1,2 @@
 # hack-illinois-26
-Our project uses Qwen2.5-7B-Instruct, a large language model, accessed via Hugging Face Transformers and powered by PyTorch for GPU-accelerated inference. We deploy and scale the model using Modal, enabling seamless PDF processing and generation of “gossip-style” summaries for complex academic content.
+Our project transforms complex academic papers and historical text into fun, easy-to-understand “gossip-style” summaries. We achieve this using Qwen2.5-7B-Instruct, accessed via Hugging Face Transformers and PyTorch, and deployed with Modal for scalable GPU-powered processing.
