@@ -1,13 +1,14 @@
 
-# from typing import List
 import modal
-import sys
 
 app = modal.App("gossip-ai")
 image = (
     modal.Image.debian_slim()
     .pip_install("torch", "transformers", "pdfplumber", "accelerate", "PyMuPDF", "fastapi", "python-multipart")
-    .add_local_file("/Users/sophieliu/Desktop/CS projects/hack-illinois-26/pdf_utils.py", remote_path="/root/pdf_utils.py")
+    .add_local_file("../hack-illinois-26/pdf_utils.py", remote_path="/root/pdf_utils.py")
+    # replace ".." in the above line with your local path to the pdf_utils.py file. 
+    # This is needed because the GPU container needs access to the PDF processing code, 
+    # and this is how we provide it.
 )
 
 @app.function(
